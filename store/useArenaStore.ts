@@ -26,6 +26,7 @@ interface ArenaStore {
   currentInsight: Insight | null;
   isLoading: boolean;
   error: string | null;
+  offlineMode: boolean;
   
   // Actions
   setApiUrl: (url: string) => void;
@@ -36,6 +37,7 @@ interface ArenaStore {
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   clearError: () => void;
+  setOfflineMode: (mode: boolean) => void;
 }
 
 export const useArenaStore = create<ArenaStore>()(
@@ -47,9 +49,11 @@ export const useArenaStore = create<ArenaStore>()(
       currentInsight: null,
       isLoading: false,
       error: null,
+      offlineMode: false,
 
       // Actions
       setApiUrl: (url) => set({ apiUrl: url }),
+      setOfflineMode: (mode) => set({ offlineMode: mode }),
       
       addInsight: (insight) =>
         set((state) => ({

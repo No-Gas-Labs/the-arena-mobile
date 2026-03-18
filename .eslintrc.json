@@ -1,0 +1,17 @@
+{
+  "extends": [
+    "expo",
+    "eslint:recommended",
+    "@react-native-community",
+    "plugin:@typescript-eslint/recommended"
+  ],
+  "parser": "@typescript-eslint/parser",
+  "plugins": ["@typescript-eslint"],
+  "rules": {
+    "@typescript-eslint/no-unused-vars": "warn",
+    "@typescript-eslint/no-explicit-any": "warn",
+    "react-native/no-inline-styles": "off",
+    "react-hooks/exhaustive-deps": "warn"
+  },
+  "ignorePatterns": ["node_modules/", ".expo/", "dist/"]
+}

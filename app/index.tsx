@@ -2,6 +2,8 @@ import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import Constants from 'expo-constants';
+import * as Haptics from 'expo-haptics';
 import { useArenaStore } from '@/store/useArenaStore';
 
 const styles = StyleSheet.create({
@@ -145,16 +147,28 @@ export default function HomeScreen() {
         <View style={styles.buttonContainer}>
           <TouchableOpacity
             style={styles.primaryButton}
-            onPress={() => router.push('/lab')}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              router.push('/lab');
+            }}
             activeOpacity={0.8}
+            accessibilityLabel="Enter The Lab"
+            accessibilityHint="Opens the AI quad-exposure lab"
+            accessibilityRole="button"
           >
             <Text style={styles.primaryButtonText}>🧪 Enter The Lab</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.secondaryButton}
-            onPress={() => router.push('/history')}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.push('/history');
+            }}
             activeOpacity={0.8}
+            accessibilityLabel="View History"
+            accessibilityHint={`View ${insights.length} saved insights`}
+            accessibilityRole="button"
           >
             <Text style={styles.secondaryButtonText}>📜 View History ({insights.length})</Text>
           </TouchableOpacity>
@@ -200,7 +214,10 @@ export default function HomeScreen() {
         {/* Settings */}
         <TouchableOpacity
           style={styles.secondaryButton}
-          onPress={() => router.push('/settings')}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            router.push('/settings');
+          }}
           activeOpacity={0.8}
         >
           <Text style={styles.secondaryButtonText}>⚙️ Settings</Text>
@@ -210,6 +227,9 @@ export default function HomeScreen() {
         <View style={styles.footer}>
           <Text style={styles.footerText}>Built by NO_GAS_LABS™</Text>
           <Text style={styles.footerText}>The future of thought is collaborative</Text>
+          <Text style={[styles.footerText, { marginTop: 8, opacity: 0.5 }]}>
+            v{Constants.expoConfig?.version || '1.0.0'}
+          </Text>
         </View>
       </ScrollView>
     </LinearGradient>

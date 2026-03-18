@@ -13,3 +13,30 @@ web-build/
 .env
 .env.local
 .DS_Store
+
+# TypeScript
+*.tsbuildinfo
+
+# Testing
+coverage/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Build outputs
+*.apk
+*.aab
+*.ipa
+
+# EAS
+.eas/
+
+# Metro
+.metro-health-check*
+
+# Generated icons
+generate-icons.js
+generate-png-icons.js

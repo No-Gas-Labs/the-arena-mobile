@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator, Alert, Keyboard } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import axios from 'axios';
+import * as Haptics from 'expo-haptics';
+import * as Clipboard from 'expo-clipboard';
 import { useArenaStore, Response } from '@/store/useArenaStore';
 
 const styles = StyleSheet.create({
@@ -130,23 +132,49 @@ const modelColors: Record<string, string> = {
 
 export default function LabScreen() {
   const router = useRouter();
-  const { apiUrl, addInsight, setLoading, isLoading, error, setError } = useArenaStore();
+  const { apiUrl, addInsight, setLoading, isLoading, error, setError, offlineMode, insights } = useArenaStore();
   const [prompt, setPrompt] = useState('');
   const [responses, setResponses] = useState<Response[]>([]);
+  const [isOnline, setIsOnline] = useState(true);
+
+  useEffect(() => {
+    const checkConnectivity = async () => {
+      try {
+        await axios.get(`${apiUrl}/health`, { timeout: 3000 });
+        setIsOnline(true);
+      } catch {
+        setIsOnline(false);
+      }
+    };
+    checkConnectivity();
+    const interval = setInterval(checkConnectivity, 30000);
+    return () => clearInterval(interval);
+  }, [apiUrl]);
 
   const handleExpose = async () => {
     if (!prompt.trim()) {
       setError('Please enter a prompt');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      return;
+    }
+
+    if (!isOnline && !offlineMode) {
+      Alert.alert(
+        'Offline',
+        'You appear to be offline. Enable Offline Mode in settings to use cached responses.',
+        [{ text: 'OK' }]
+      );
       return;
     }
 
     setLoading(true);
     setError(null);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     try {
       const response = await axios.post(`${apiUrl}/api/quad-exposure`, {
         prompt: prompt.trim(),
-      });
+      }, { timeout: 30000 });
 
       const newResponses = response.data.responses || [];
       setResponses(newResponses);
@@ -158,8 +186,23 @@ export default function LabScreen() {
         responses: newResponses,
         timestamp: Date.now(),
       });
+      
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (err) {
+      // If offline mode enabled, show similar cached insights
+      if (offlineMode && insights.length > 0) {
+        const similarInsights = insights.filter(i => 
+          i.prompt.toLowerCase().includes(prompt.toLowerCase().split(' ')[0])
+        );
+        if (similarInsights.length > 0) {
+          setResponses(similarInsights[0].responses);
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+          Alert.alert('Offline Mode', 'Showing cached response. Connect to internet for fresh responses.');
+          return;
+        }
+      }
       setError(err instanceof Error ? err.message : 'Failed to get responses');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
       setLoading(false);
     }
@@ -173,6 +216,12 @@ export default function LabScreen() {
     });
   };
 
+  const handleCopyResponse = async (text: string) => {
+    await Clipboard.setStringAsync(text);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    Alert.alert('Copied!', 'Response copied to clipboard');
+  };
+
   return (
     <LinearGradient
       colors={['#050812', '#0a0e27', '#050812']}
@@ -180,11 +229,37 @@ export default function LabScreen() {
       end={{ x: 1, y: 1 }}
       style={styles.gradient}
     >
-      <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+      <ScrollView 
+        style={styles.container} 
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        onScrollBeginDrag={() => Keyboard.dismiss()}
+      >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>🧪 The Lab</Text>
-          <Text style={{ color: '#a0a0a0', fontSize: 12 }}>Quad-exposure to 4 AI models</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Text style={styles.title}>🧪 The Lab</Text>
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: isOnline ? 'rgba(0,255,136,0.1)' : 'rgba(255,50,50,0.1)',
+              paddingHorizontal: 8,
+              paddingVertical: 4,
+              borderRadius: 12,
+            }}>
+              <View style={{
+                width: 8,
+                height: 8,
+                borderRadius: 4,
+                backgroundColor: isOnline ? '#00ff88' : '#ff3333',
+                marginRight: 6,
+              }} />
+              <Text style={{ color: isOnline ? '#00ff88' : '#ff3333', fontSize: 10 }}>
+                {isOnline ? 'ONLINE' : 'OFFLINE'}
+              </Text>
+            </View>
+          </View>
+          <Text style={{ color: '#a0a0a0', fontSize: 12, marginTop: 4 }}>Quad-exposure to 4 AI models</Text>
         </View>
 
         {/* Error */}
@@ -253,13 +328,22 @@ export default function LabScreen() {
                   <Text style={styles.stat}>📊 {response.tokens} tokens</Text>
                   <Text style={styles.stat}>⏱️ {response.latency_ms}ms</Text>
                 </View>
-                <TouchableOpacity
-                  style={styles.selectButton}
-                  onPress={() => handleSelectResponse(response)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.selectButtonText}>✓ Select & Publish</Text>
-                </TouchableOpacity>
+                <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+                  <TouchableOpacity
+                    style={[styles.selectButton, { flex: 1 }]}
+                    onPress={() => handleSelectResponse(response)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.selectButtonText}>✓ Select</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.selectButton, { flex: 1, backgroundColor: '#1a3a5a' }]}
+                    onPress={() => handleCopyResponse(response.output)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[styles.selectButtonText, { color: '#00d9ff' }]}>📋 Copy</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             ))}
           </View>

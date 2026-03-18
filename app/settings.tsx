@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Switch } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Switch, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import * as Haptics from 'expo-haptics';
 import { useArenaStore } from '@/store/useArenaStore';
 
 const styles = StyleSheet.create({
@@ -103,14 +104,31 @@ const styles = StyleSheet.create({
 
 export default function SettingsScreen() {
   const router = useRouter();
-  const { apiUrl, setApiUrl } = useArenaStore();
+  const { apiUrl, setApiUrl, offlineMode, setOfflineMode } = useArenaStore();
   const [tempApiUrl, setTempApiUrl] = useState(apiUrl);
-  const [offlineMode, setOfflineMode] = useState(false);
+  const [urlSaved, setUrlSaved] = useState(false);
 
   const handleSaveApiUrl = () => {
-    if (tempApiUrl.trim()) {
-      setApiUrl(tempApiUrl.trim());
+    if (!tempApiUrl.trim()) {
+      Alert.alert('Error', 'Please enter a valid URL');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      return;
     }
+    
+    // Basic URL validation
+    try {
+      new URL(tempApiUrl.trim());
+    } catch {
+      Alert.alert('Error', 'Please enter a valid URL (e.g., https://api.example.com)');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      return;
+    }
+    
+    setApiUrl(tempApiUrl.trim());
+    setUrlSaved(true);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    
+    setTimeout(() => setUrlSaved(false), 2000);
   };
 
   return (
@@ -141,11 +159,11 @@ export default function SettingsScreen() {
               onChangeText={setTempApiUrl}
             />
             <TouchableOpacity
-              style={styles.button}
+              style={[styles.button, urlSaved && { backgroundColor: '#00ff88' }]}
               onPress={handleSaveApiUrl}
               activeOpacity={0.8}
             >
-              <Text style={styles.buttonText}>Save URL</Text>
+              <Text style={styles.buttonText}>{urlSaved ? '✓ Saved!' : 'Save URL'}</Text>
             </TouchableOpacity>
           </View>
 

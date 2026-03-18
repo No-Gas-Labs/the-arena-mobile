@@ -1,7 +1,8 @@
-import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, FlatList } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, RefreshControl } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import * as Haptics from 'expo-haptics';
 import { useArenaStore } from '@/store/useArenaStore';
 
 const styles = StyleSheet.create({
@@ -112,7 +113,42 @@ const styles = StyleSheet.create({
 
 export default function HistoryScreen() {
   const router = useRouter();
-  const { insights } = useArenaStore();
+  const { insights, deleteInsight } = useArenaStore();
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = React.useCallback(() => {
+    setRefreshing(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    // Simulate refresh - in real app would refetch from API
+    setTimeout(() => setRefreshing(false), 1000);
+  }, []);
+
+  const handleDelete = (id: string, prompt: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    Alert.alert(
+      'Delete Insight',
+      `Delete "${prompt.substring(0, 30)}..."?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: () => {
+            deleteInsight(id);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          }
+        },
+      ]
+    );
+  };
+
+  const handleShare = (insight: typeof insights[0]) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push({
+      pathname: '/publish',
+      params: { response: JSON.stringify(insight.responses[0]) },
+    });
+  };
 
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp);
@@ -133,8 +169,11 @@ export default function HistoryScreen() {
           </View>
 
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyIcon}>📭</Text>
+            <Text style={styles.emptyIcon}>⚔️</Text>
             <Text style={styles.emptyText}>No insights yet</Text>
+            <Text style={{ color: '#666', fontSize: 12, marginBottom: 20, textAlign: 'center' }}>
+              Enter The Lab to create your first insight
+            </Text>
             <TouchableOpacity
               style={styles.backButton}
               onPress={() => router.push('/lab')}
@@ -155,10 +194,57 @@ export default function HistoryScreen() {
       end={{ x: 1, y: 1 }}
       style={styles.gradient}
     >
-      <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+      <ScrollView 
+        style={styles.container} 
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#00d9ff"
+            colors={['#00d9ff']}
+            progressBackgroundColor="#1a1f3a"
+          />
+        }
+      >
         <View style={styles.header}>
-          <Text style={styles.title}>📜 History</Text>
-          <Text style={{ color: '#a0a0a0', fontSize: 12 }}>{insights.length} insights</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <View>
+              <Text style={styles.title}>📜 History</Text>
+              <Text style={{ color: '#a0a0a0', fontSize: 12 }}>{insights.length} insights</Text>
+            </View>
+            {insights.length > 0 && (
+              <TouchableOpacity
+                style={{
+                  backgroundColor: '#ff3333',
+                  paddingHorizontal: 12,
+                  paddingVertical: 6,
+                  borderRadius: 6,
+                }}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  Alert.alert(
+                    'Clear All History',
+                    'Delete all insights? This cannot be undone.',
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      { 
+                        text: 'Clear All', 
+                        style: 'destructive',
+                        onPress: () => {
+                          insights.forEach(i => deleteInsight(i.id));
+                          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                        }
+                      },
+                    ]
+                  );
+                }}
+                activeOpacity={0.8}
+              >
+                <Text style={{ color: '#fff', fontSize: 12, fontWeight: 'bold' }}>Clear All</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
 
         {insights.map((insight) => (
@@ -201,6 +287,36 @@ export default function HistoryScreen() {
                 </Text>
               </View>
             )}
+            
+            {/* Actions */}
+            <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
+              <TouchableOpacity
+                style={{
+                  flex: 1,
+                  backgroundColor: '#00d9ff',
+                  paddingVertical: 8,
+                  borderRadius: 6,
+                  alignItems: 'center',
+                }}
+                onPress={() => handleShare(insight)}
+                activeOpacity={0.8}
+              >
+                <Text style={{ color: '#050812', fontSize: 12, fontWeight: 'bold' }}>📤 Share</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{
+                  flex: 1,
+                  backgroundColor: '#ff3333',
+                  paddingVertical: 8,
+                  borderRadius: 6,
+                  alignItems: 'center',
+                }}
+                onPress={() => handleDelete(insight.id, insight.prompt)}
+                activeOpacity={0.8}
+              >
+                <Text style={{ color: '#fff', fontSize: 12, fontWeight: 'bold' }}>🗑️ Delete</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         ))}
       </ScrollView>

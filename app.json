@@ -11,6 +11,14 @@
       "resizeMode": "contain",
       "backgroundColor": "#050812"
     },
+    "splashScreen": {
+      "backgroundColor": "#050812",
+      "resizeMode": "contain",
+      "statusBar": {
+        "backgroundColor": "#050812",
+        "translucent": false
+      }
+    },
     "assetBundlePatterns": [
       "**/*"
     ],
@@ -26,7 +34,9 @@
       "package": "com.nogaslabs.thearena",
       "permissions": [
         "INTERNET",
-        "ACCESS_NETWORK_STATE"
+        "ACCESS_NETWORK_STATE",
+        "VIBRATE",
+        "RECEIVE_BOOT_COMPLETED"
       ]
     },
     "web": {
@@ -35,9 +45,10 @@
     "plugins": [
       "expo-router"
     ],
+    "scheme": "thearena",
     "extra": {
       "eas": {
-        "projectId": "the-arena-mobile"
+        "projectId": "dbf17ba9-16d6-403a-9a0f-9c5b5d73393a"
       }
     },
     "runtimeVersion": {
